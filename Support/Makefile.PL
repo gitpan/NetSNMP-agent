@@ -5,6 +5,9 @@ use Getopt::Long;
 my $lib_version;
 my %MakeParams = ();
 
+# See lib/ExtUtils/MakeMaker.pm for details of how to influence
+# the contents of the Makefile that is written.
+
 %MakeParams = InitMakeParams();
 
 WriteMakefile(%MakeParams);
@@ -14,16 +17,18 @@ Check_Version();
 sub InitMakeParams {
     my $opts;
     my %Params = (
-		  'NAME'		=> 'NetSNMP::agent::default_store',
-		  'VERSION_FROM'	=> 'default_store.pm', # finds $VERSION
+		  'NAME'		=> 'NetSNMP::agent::Support',
+		  'VERSION_FROM'	=> 'Support.pm', # finds $VERSION
 		  'XSPROTOARG'          => '-prototypes',
+		  'PREREQ_PM'           => {},
 		  );
 
     if ($ENV{'OSTYPE'} eq 'msys') {
       $Params{'DEFINE'} = "-DMINGW_PERL";
     }
-                                   
+                  
     my ($snmp_lib, $snmp_llib, $sep);
+
     if (($Config{'osname'} eq 'MSWin32' && $ENV{'OSTYPE'} ne 'msys')) {
       $opts = NetSNMPGetOpts();	
       $Params{'DEFINE'} = "-DMSVC_PERL";
@@ -58,8 +63,8 @@ sub InitMakeParams {
 	  else
 	  {
 	    @LibDirs = ();
-	    $LibDirs[0] = prompt("The Net-SNMP library ($snmp_lib_file) could not be found.\nPlease enter the directory where it is located:");
-	    $LibDirs[0] =~ s/\\$//;
+	    @LibDirs[0] = prompt("The Net-SNMP library ($snmp_lib_file) could not be found.\nPlease enter the directory where it is located:");
+	    @LibDirs[0] =~ s/\\$//;
 	  }
 	}
 	$Params{LIBS} = "-L$LibDir -l$snmp_link_lib";
@@ -67,27 +72,27 @@ sub InitMakeParams {
 
       $Params{'INC'} = "-I$basedir\\include\\ -I$basedir\\include\\net-snmp\\ -I$basedir\\win32\\ ";
     }
-    else {
-	$opts = NetSNMPGetOpts("../../");
-	$Params{'LIBS'}    = `$opts->{'nsconfig'} --libs`;
-	chomp($Params{'LIBS'});
-	$Params{'CCFLAGS'} = `$opts->{'nsconfig'} --cflags`;
-	chomp($Params{'CCFLAGS'});
-	$Params{'CCFLAGS'} .= " " . $Config{'ccflags'};
-        $lib_version = `$opts->{'nsconfig'} --version`;
-	if ($opts->{'insource'} eq "true") {
-	    $Params{'LIBS'} = "-L../../../snmplib/.libs -L../../../snmplib/ " . $Params{'LIBS'};
-	    $Params{'CCFLAGS'} = "-I../../../include " . $Params{'CCFLAGS'};
-	}
-	$Params{'CCFLAGS'} =~ s/ -W(all|inline|strict-prototypes|write-strings|cast-qual|no-char-subscripts)//g; # ignore developer warnings
-	if ($Params{'LIBS'} eq "" || $Params{'CCFLAGS'} eq "") {
-	    die "You need to install net-snmp first (I can't find net-snmp-config)";
-	}
+    else
+    {
+      $opts = NetSNMPGetOpts("../../");
+      $Params{'LIBS'}    = `$opts->{'nsconfig'} --libs`;
+      chomp($Params{'LIBS'});
+      $Params{'CCFLAGS'} = `$opts->{'nsconfig'} --cflags`;
+      chomp($Params{'CCFLAGS'});
+      $Params{'CCFLAGS'} .= " " . $Config{'ccflags'};
+      $lib_version = `$opts->{'nsconfig'} --version`;
+      
+      if (lc($opts->{'insource'}) eq "true") {
+	$Params{'LIBS'} = "-L../../snmplib/.libs -L../../snmplib/ " . $Params{'LIBS'};
+	$Params{'CCFLAGS'} = "-I../../include " . $Params{'CCFLAGS'};
+      }
+      $Params{'CCFLAGS'} =~ s/ -W(all|inline|strict-prototypes|write-strings|cast-qual|no-char-subscripts)//g; # ignore developer warnings
+      if ($Params{'LIBS'} eq "" || $Params{'CCFLAGS'} eq "") {
+	die "You need to install net-snmp first (I can't find net-snmp-config)";
+      }
     }
-
-    return(%Params);
+    return (%Params);
 }
-
 # common subroutines -- DO NOT EDIT.
 # They are imported from the Makefile.subs.pl file
 sub NetSNMPGetOpts {
@@ -190,10 +195,6 @@ sub Check_Version {
 	    chomp($srcver);
 	    my $srcfloat = floatize_version($srcver);
 	    $perlver =~ s/pre/0./;
-	    # we allow for perl/CPAN-only revisions beyond the default
-	    # version formatting of net-snmp itself.
-	    $perlver =~ s/(\.\d{5}).*/\1/;
-	    $perlver =~ s/0*$//;
 	    if ($srcfloat ne $perlver) {
 		if (!$foundversion) {
 		    print STDERR "ERROR:

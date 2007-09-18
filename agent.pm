@@ -86,7 +86,7 @@ use vars qw(@ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION $AUTOLOAD);
 	SNMP_ERR_AUTHORIZATIONERROR
 	SNMP_ERR_NOTWRITABLE
 );
-$VERSION = '5.0301';
+$VERSION = '5.0401';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -234,6 +234,7 @@ module implements in a perl-way, and a perl specific tutorial at:
 =head2 Sub-agent example
 
     	use NetSNMP::agent (':all');
+    	use NetSNMP::ASN qw(ASN_OCTET_STR);
 
         my $value = "hello world";
 	sub myhandler {

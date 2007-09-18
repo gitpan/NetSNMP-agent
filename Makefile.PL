@@ -68,8 +68,8 @@ sub InitMakeParams {
 	  else
 	  {
 	    @LibDirs = ();
-	    @LibDirs[0] = prompt("The Net-SNMP library ($snmp_lib_file) could not be found.\nPlease enter the directory where it is located:");
-	    @LibDirs[0] =~ s/\\$//;
+	    $LibDirs[0] = prompt("The Net-SNMP library ($snmp_lib_file) could not be found.\nPlease enter the directory where it is located:");
+	    $LibDirs[0] =~ s/\\$//;
 	  }
 	}
 	$Params{LIBS} = "-L$LibDir -l$snmp_link_lib -l$agent_link_lib -l$helpers_link_lib -l$mibs_link_lib";
@@ -79,7 +79,8 @@ sub InitMakeParams {
     }
     else {
 	$opts = NetSNMPGetOpts();
-	$Params{'LIBS'}    = `$opts->{'nsconfig'} --agent-libs`;
+	$Params{'LDDLFLAGS'} = "$Config{lddlflags} " . `$opts->{'nsconfig'} --ldflags`;
+	$Params{'LIBS'}   = `$opts->{'nsconfig'} --base-agent-libs`;
 	chomp($Params{'LIBS'});
 	$Params{'CCFLAGS'} = `$opts->{'nsconfig'} --cflags`;
 	chomp($Params{'CCFLAGS'});
@@ -89,6 +90,7 @@ sub InitMakeParams {
 	    $Params{'LIBS'} = "-L../../snmplib/.libs -L../../snmplib/ -L../../agent/.libs -L../../agent/ -L../../agent/helpers/.libs -L../../agent/helpers/ " . $Params{'LIBS'};
 	    $Params{'CCFLAGS'} = "-I../../include " . $Params{'CCFLAGS'};
 #	} else {
+	    $Params{'LIBS'} = `$opts->{'nsconfig'} --libdir` . $Params{'LIBS'};
 #	    $Params{'PREREQ_PM'} = {'NetSNMP::OID' => '0.1'};
 	}
 	$Params{'CCFLAGS'} =~ s/ -W(all|inline|strict-prototypes|write-strings|cast-qual|no-char-subscripts)//g; # ignore developer warnings

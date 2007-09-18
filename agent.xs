@@ -18,9 +18,9 @@ typedef struct handler_cb_data_s {
 } handler_cb_data;
 
 typedef struct netsnmp_oid_s {
-    unsigned int        *name;
-    unsigned int         len;
-    unsigned int         namebuf[ MAX_OID_LEN ];
+    oid                 *name;
+    size_t               len;
+    oid                  namebuf[ MAX_OID_LEN ];
 } netsnmp_oid;
 
 static int have_done_agent = 0;
@@ -448,6 +448,10 @@ __agent_check_and_process(block = 1)
 
 void
 init_mib()
+    CODE:
+    {
+        netsnmp_init_mib();
+    }
 
 int
 init_agent(name)
@@ -569,7 +573,7 @@ nsahr_getRootOID(me)
         arg = newSVrv(rarg, "netsnmp_oidPtr");
         sv_setiv(arg, (IV) o);
 
-        XPUSHs(rarg);
+        XPUSHs(sv_2mortal(rarg));
 
         PUTBACK;
         i = perl_call_pv("NetSNMP::OID::newwithptr", G_SCALAR);
@@ -608,7 +612,7 @@ getOID(me)
         arg = newSVrv(rarg, "netsnmp_oidPtr");
         sv_setiv(arg, (IV) o);
 
-        XPUSHs(rarg);
+        XPUSHs(sv_2mortal(rarg));
 
         PUTBACK;
         i = perl_call_pv("NetSNMP::OID::newwithptr", G_SCALAR);
@@ -997,11 +1001,13 @@ nari_next(me)
                 rarg = newSViv(0);
                 arg = newSVrv(rarg, "NetSNMP::agent::netsnmp_request_infoPtr");
                 sv_setiv(arg, (IV) request);
-                ST(0) = rarg;
+                RETVAL = rarg;				
             } else {
-                ST(0) = &sv_undef;
+                RETVAL = &sv_undef;
             }
         }
+    OUTPUT:
+        RETVAL
 
 MODULE = NetSNMP::agent  PACKAGE = NetSNMP::agent::netsnmp_agent_request_info PREFIX = narqi_
 
