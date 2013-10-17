@@ -13,6 +13,8 @@
 #define sv_undef PL_sv_undef
 #endif
 
+typedef netsnmp_handler_registration *NetSNMP__agent__netsnmp_handler_registration;
+
 typedef struct handler_cb_data_s {
    SV *perl_cb;
 } handler_cb_data;
@@ -397,7 +399,7 @@ handler_wrapper(netsnmp_mib_handler          *handler,
         sv_setiv(arg, (IV) handler);
         XPUSHs(sv_2mortal(rarg));
         rarg = newSViv(0);
-        arg = newSVrv(rarg, "NetSNMP::agent::reginfo");
+        arg = newSVrv(rarg, "NetSNMP::agent::netsnmp_handler_registrationPtr");
         sv_setiv(arg, (IV) reginfo);
         XPUSHs(sv_2mortal(rarg));
         rarg = newSViv(0);
@@ -494,7 +496,7 @@ na_errlog(me,value)
 
 MODULE = NetSNMP::agent  PACKAGE = NetSNMP::agent::netsnmp_handler_registration  PREFIX = nsahr_
 
-netsnmp_handler_registration *
+NetSNMP::agent::netsnmp_handler_registration
 nsahr_new(name, regoid, perlcallback)
         char *name;
 	char *regoid;
@@ -524,8 +526,6 @@ nsahr_new(name, regoid, perlcallback)
     OUTPUT:
         RETVAL
 
-MODULE = NetSNMP::agent  PACKAGE = netsnmp_handler_registrationPtr  PREFIX = nsahr_
-
 void
 nsahr_DESTROY(reginfo)
 	netsnmp_handler_registration *reginfo
@@ -548,6 +548,9 @@ nsahr_register(me)
             }
     OUTPUT:
 	RETVAL
+
+
+MODULE = NetSNMP::agent PACKAGE = NetSNMP::agent::netsnmp_handler_registrationPtr PREFIX = nsahr_
 
 void
 nsahr_getRootOID(me)
@@ -773,6 +776,8 @@ nari_setValue(me, type, value)
         netsnmp_request_info *request;
         u_long utmp;
         long ltmp;
+        uint64_t ulltmp;
+        struct counter64 c64;
 	oid myoid[MAX_OID_LEN];
 	size_t myoid_len;
         STRLEN stringlen;
@@ -794,7 +799,8 @@ nari_setValue(me, type, value)
               break ;
           case ASN_INTEGER:
 	      /* We want an integer here */
-	      if ((SvTYPE(value) == SVt_IV) || (SvTYPE(value) == SVt_PVMG)) {
+	      if ((SvTYPE(value) == SVt_IV) || (SvTYPE(value) == SVt_PVMG) ||
+                   SvIOK(value)) {
 		  /* Good - got a real one (or a blessed object that we hope will turn out OK) */
 		  ltmp = SvIV(value);
 		  snmp_set_var_typed_value(request->requestvb, (u_char)type,
@@ -827,10 +833,10 @@ nari_setValue(me, type, value)
 
           case ASN_UNSIGNED:
           case ASN_COUNTER:
-          case ASN_COUNTER64:
           case ASN_TIMETICKS:
 	      /* We want an integer here */
-	      if ((SvTYPE(value) == SVt_IV) || (SvTYPE(value) == SVt_PVMG)) {
+	      if ((SvTYPE(value) == SVt_IV) || (SvTYPE(value) == SVt_PVMG) ||
+                   SvIOK(value)) {
 		  /* Good - got a real one (or a blessed scalar which we have to hope will turn out OK) */
 		  utmp = SvIV(value);
                   snmp_set_var_typed_value(request->requestvb, (u_char)type,
@@ -855,6 +861,46 @@ nari_setValue(me, type, value)
 	      }
 	      else {
 		snmp_log(LOG_ERR, "Non-unsigned-integer value passed to setValue with ASN_UNSIGNED/ASN_COUNTER/ASN_TIMETICKS: type was %d\n",
+			SvTYPE(value));
+		RETVAL = 0;
+		break;
+	      }
+
+          case ASN_COUNTER64:
+	      /* We want an integer here */
+	      if ((SvTYPE(value) == SVt_IV) || (SvTYPE(value) == SVt_PVMG)) {
+		  /* Good - got a real one (or a blessed scalar which we have to hope will turn out OK) */
+		  ulltmp = SvIV(value);
+		  c64.high = (uint32_t)(ulltmp >> 32);
+		  c64.low  = (uint32_t)ulltmp;
+                  snmp_set_var_typed_value(request->requestvb, (u_char)type,
+                                       (u_char *) &c64, sizeof(struct counter64));
+		  RETVAL = 1;
+		  break;
+	      }
+	      else if (SvPOKp(value)) {
+	          /* Might be OK - got a string, so try to convert it, allowing base 10, octal, and hex forms */
+	          stringptr = SvPV(value, stringlen);
+#if defined(WIN32)
+		  ulltmp = strtoul(  stringptr, NULL, 0 );
+#else
+		  ulltmp = strtoull( stringptr, NULL, 0 );
+#endif
+		  if (errno == EINVAL) {
+		  	snmp_log(LOG_ERR, "Could not convert string to number in setValue: '%s'", stringptr);
+			RETVAL = 0;
+			break;
+		  }
+
+		  c64.high = (uint32_t)(ulltmp >> 32);
+		  c64.low  = (uint32_t)ulltmp;
+                  snmp_set_var_typed_value(request->requestvb, (u_char)type,
+                                       (u_char *) &c64, sizeof(struct counter64));
+		  RETVAL = 1;
+		  break;
+	      }
+	      else {
+		snmp_log(LOG_ERR, "Non-unsigned-integer value passed to setValue with ASN_COUNTER64: type was %d\n",
 			SvTYPE(value));
 		RETVAL = 0;
 		break;

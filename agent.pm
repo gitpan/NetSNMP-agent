@@ -1,6 +1,7 @@
 package NetSNMP::agent;
 
 use strict;
+use warnings;
 use Carp;
 
 require Exporter;
@@ -86,7 +87,7 @@ use vars qw(@ISA %EXPORT_TAGS @EXPORT_OK @EXPORT $VERSION $AUTOLOAD);
 	SNMP_ERR_AUTHORIZATIONERROR
 	SNMP_ERR_NOTWRITABLE
 );
-$VERSION = '5.0401';
+$VERSION = '5.0404';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -130,7 +131,6 @@ sub AUTOLOAD {
 	return if ($haveinit);
 	$haveinit = 1;
 
-	snmp_enable_stderrlog();
 	my $flags = $_[0];
 	if ($flags->{'AgentX'}) {
 	    netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_ROLE, 1);
@@ -271,8 +271,6 @@ module implements in a perl-way, and a perl specific tutorial at:
     				'Name' => "my_agent_name",
     				'AgentX' => 1
     				);
-	}
-
     	$agent->register("my_agent_name", ".1.3.6.1.4.1.8072.9999.9999.7375",
                          \&myhandler);
 
@@ -385,6 +383,8 @@ functional "enough" at this point in time.
     	list of valid modes.
 
 	$mode = $request->getMode();
+
+=head2 $registration_info object functions
 
     getRootOID ()
 	Returns a NetSNMP::OID object that describes the registration

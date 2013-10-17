@@ -13,4 +13,3 @@ default_store/test.pl
 Support/Makefile.PL
 Support/Support.pm
 
-META.yml                                 Module meta-data (added by MakeMaker)
